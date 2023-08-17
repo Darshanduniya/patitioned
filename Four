@@ -1,0 +1,22 @@
+from pyspark.sql import SparkSession
+
+# Create a Spark session
+spark = SparkSession.builder \
+    .appName("HiveTableToPartitionedTable") \
+    .enableHiveSupport() \
+    .getOrCreate()
+
+# Read data from the Hive table
+hive_table_name = "your_hive_table_name"
+data_df = spark.sql(f"SELECT * FROM {hive_table_name}")
+
+# Create a partitioned table under the "darshan" schema based on the pp_month column
+partitioned_table_name = "partitioned_table"
+partitioned_table_path = "hdfs:///user/hive/warehouse/darshan.db/partitioned_table"
+data_df.write \
+    .format("parquet") \
+    .partitionBy("pp_month") \
+    .saveAsTable(f"darshan.{partitioned_table_name}")
+
+# Stop the Spark session
+spark.stop()
