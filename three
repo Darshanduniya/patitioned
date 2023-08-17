@@ -1,0 +1,30 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StringType
+
+# Create Spark session
+spark = SparkSession.builder \
+    .appName("HiveTableToNewTable") \
+    .enableHiveSupport() \
+    .getOrCreate()
+
+# Read data from Hive table
+hive_table_name = "your_hive_table_name"
+df = spark.table(hive_table_name)
+
+# Create new table with partition column
+new_table_name = "new_table"
+partition_column = "Pp_month"
+
+# Get the list of column names and data types from the DataFrame's schema
+column_definitions = [f"{col.name} {col.dataType.simpleString()}" for col in df.schema]
+
+# Create the new table using the collected column definitions
+create_table_query = (
+    f"CREATE TABLE IF NOT EXISTS {new_table_name} "
+    f"({', '.join(column_definitions)}) "
+    f"PARTITIONED BY ({partition_column} STRING)"
+)
+
+spark.sql(create_table_query)
+
+# Rest of your code for upsert operation
