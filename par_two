@@ -1,0 +1,39 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
+
+# Create Spark session
+spark = SparkSession.builder \
+    .appName("HiveTableToNewTable") \
+    .enableHiveSupport() \
+    .getOrCreate()
+
+# Read data from Hive table
+hive_table_name = "your_hive_table_name"
+df = spark.table(hive_table_name)
+
+# Create new table with partition column
+new_table_name = "new_table"
+partition_column = "Pp_month"
+schema = df.schema
+spark.sql(f"CREATE TABLE IF NOT EXISTS {new_table_name} ({', '.join([f'{col.name} {col.dataType}' for col in schema])}) PARTITIONED BY ({partition_column} STRING)")
+
+# Upsert data into new table
+def upsert_data(target_df, source_df, partition_col, unique_key_cols):
+    target_df = target_df.drop(partition_col)
+    source_df = source_df.drop(partition_col)
+
+    condition = " AND ".join([f"target.{col} = source.{col}" for col in unique_key_cols])
+    
+    target_df.alias("target") \
+        .merge(source_df.alias("source"), condition) \
+        .whenMatchedUpdateAll() \
+        .whenNotMatchedInsertAll() \
+        .execute()
+
+unique_key_cols = ["col1", "col2"]  # List of columns that together form a unique identifier
+upsert_data(
+    target_df=spark.table(new_table_name),
+    source_df=df,
+    partition_col=partition_column,
+    unique_key_cols=unique_key_cols
+)
