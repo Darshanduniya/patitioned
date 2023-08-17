@@ -1,0 +1,38 @@
+from pyspark.sql import SparkSession
+
+# Create a Spark session
+spark = SparkSession.builder \
+    .appName("CreatePartitionedTableAndInsertData") \
+    .enableHiveSupport() \
+    .getOrCreate()
+
+# Define the source Hive table and destination partitioned table names
+source_hive_table_name = "hlx_wkly"
+destination_partitioned_table_name = "darshan.partitioned_table"
+
+# Read the schema of the source Hive table from the Hive Metastore
+source_table_schema = spark.table(source_hive_table_name).schema
+column_names = [field.name for field in source_table_schema.fields]
+
+# Construct the list of column definitions
+column_definitions = ", ".join([f"{col} {source_table_schema[col].dataType}" for col in column_names])
+
+# Create the destination partitioned table with the same structure as the source table
+create_table_query = f"""
+    CREATE TABLE IF NOT EXISTS {destination_partitioned_table_name} (
+        {column_definitions}
+    )
+    PARTITIONED BY (pp_month STRING)
+    STORED AS PARQUET
+"""
+spark.sql(create_table_query)
+
+# Insert data into the partitioned table
+insert_query = f"""
+    INSERT INTO {destination_partitioned_table_name} PARTITION(pp_month)
+    SELECT *, pp_month FROM {source_hive_table_name}
+"""
+spark.sql(insert_query)
+
+# Stop the Spark session
+spark.stop()
