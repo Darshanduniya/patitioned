@@ -1,0 +1,30 @@
+from pyspark.sql import SparkSession
+
+# Initialize a Spark session
+spark = SparkSession.builder.appName("EmptyTableStructureExample").getOrCreate()
+
+# Define the partitioning column(s)
+partition_columns = ["gender"]
+
+# Define the database and table name
+database_name = "your_database_name"
+table_name = "your_table_name"
+
+# Define the location where the table will be stored
+table_location = f"hdfs:///user/hive/warehouse/{database_name}.db/{table_name}"
+
+# Create an empty DataFrame with the desired schema
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+
+schema = StructType([
+    StructField("name", StringType(), nullable=True),
+    StructField("age", IntegerType(), nullable=True)
+])
+
+empty_df = spark.createDataFrame([], schema)
+
+# Create the empty partitioned table
+empty_df.write.partitionBy(partition_columns).parquet(table_location)
+
+# Stop the Spark session
+spark.stop()
