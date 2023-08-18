@@ -1,0 +1,19 @@
+# Replace 'existing_table' with the actual name of the table you want to fetch the structure from
+existing_table = "your_existing_table_name"
+new_table = "your_new_partitioned_table_name"
+partition_column = "pp_month"
+
+# Fetch the structure of the existing table
+existing_table_schema = spark.sql(f"DESCRIBE {existing_table}")
+
+# Generate the create table statement for the new partitioned table
+create_table_statement = f"""
+CREATE TABLE IF NOT EXISTS {new_table} (
+    {', '.join([f"{row.col_name} {row.data_type}" for row in existing_table_schema.select("col_name", "data_type").collect()])}
+)
+PARTITIONED BY ({partition_column} STRING)
+STORED AS PARQUET
+"""
+
+# Execute the create table statement
+spark.sql(create_table_statement)
